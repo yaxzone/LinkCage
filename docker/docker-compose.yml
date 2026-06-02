@@ -1,0 +1,37 @@
+services:
+  chromium:
+    image: luisyax/linkcage-sandbox:hardened
+    container_name: chromium-browser
+    networks:
+      - linkcage
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      # Start chromium on a blank page with the DevTools remote-debugging
+      # endpoint enabled. The host then drives the running chromium by
+      # PUT /json/new?<url> (curl from inside the container) to open the
+      # user's URL as a new active tab. The debug port binds to localhost
+      # inside the container only (chromium's default) and is never
+      # published on the host. This is far more reliable than killing /
+      # relaunching chromium (s6 races us) or chromium single-instance
+      # URL forwarding (silently absorbed in this image).
+      - CHROME_CLI=--incognito --remote-debugging-port=9222 about:blank
+      # Clipboard sharing is disabled to preserve isolation: a malicious page
+      # in the sandbox must not be able to read or overwrite the host clipboard
+      # (clipboard-injection / data-exfiltration channel). Set to "true" only
+      # if you accept that risk for copy/paste convenience.
+      - SELKIES_CLIPBOARD_ENABLED=false
+      - SELKIES_ENABLE_BINARY_CLIPBOARD=false
+    tmpfs:
+      - /config:size=1g
+    ports:
+      - "127.0.0.1:3080:3000"
+      - "127.0.0.1:3443:3001"
+    shm_size: "1gb"
+    restart: unless-stopped
+
+networks:
+  linkcage:
+    name: linkcage-net
+    driver: bridge

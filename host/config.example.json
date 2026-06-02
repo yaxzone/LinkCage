@@ -1,0 +1,24 @@
+{
+  "_comment": "LinkCage user config. Copy this to ~/.linkcage/config.json (Mac/Linux) or %LOCALAPPDATA%/LinkCage/config.json (Windows) and edit. Nothing here is required — LinkCage works out of the box with zero configuration.",
+
+  "debug_log": false,
+  "_comment_debug": "Enable debug logging. Writes to ~/.linkcage/linkcage-debug.log (Mac/Linux) or %LOCALAPPDATA%/LinkCage/linkcage-debug.log (Windows). Contains URLs you open — disable for privacy. Only enable when troubleshooting.",
+
+  "verdict": {
+    "_comment": "URL reputation check settings. Disable with enabled:false if you want pure sandbox only.",
+    "enabled": true,
+    "cache_enabled": true,
+    "_comment_cache": "When true, verdict results are stored in a local SQLite database (cache.sqlite). This speeds up repeat checks but creates a local history of every URL you sandboxed. Set to false for maximum privacy — each click will re-check the URL from scratch (slightly slower).",
+    "deadline_seconds": 1.5,
+    "urlhaus": {
+      "_comment": "URLhaus malware feed from abuse.ch. No API key required. Free, CC0 licensed.",
+      "enabled": true,
+      "refresh_hours": 6
+    },
+    "gsb": {
+      "_comment": "Google Safe Browsing v4 Lookup API. Optional upgrade. Get a free key at https://console.cloud.google.com — create a project, enable the Safe Browsing API, create an API key, and paste it below. Non-commercial use only per Google's TOS.",
+      "enabled": false,
+      "api_key": ""
+    }
+  }
+}

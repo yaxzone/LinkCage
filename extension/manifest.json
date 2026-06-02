@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "LinkCage",
+  "version": "1.0.0",
+  "description": "Extension alone won't work. Needs Docker + the LinkCage companion host. Risky links open in a sandbox. More: linkcage.app",
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "LinkCage",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

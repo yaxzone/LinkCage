@@ -1,0 +1,20 @@
+.chromium-profile/
+*.log
+*.pem
+*.crx
+trivy-scan-report.txt
+.DS_Store
+._*
+cache.sqlite
+urlhaus.txt
+__pycache__/
+*.pyc
+.venv/
+.claude/settings.local.json
+dist/
+
+# Local dev/demo fixture — lists live URLhaus malware domains, not for the public repo
+test-links.html
+
+# Per-machine runtime config (contains local paths) — users copy host/config.example.json
+config.json

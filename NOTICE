@@ -1,0 +1,20 @@
+LinkCage
+Copyright 2026 Luis Yax
+
+This product includes software developed by Luis Yax.
+
+Licensed under the Apache License, Version 2.0 (the "License").
+A copy of the License is included as the LICENSE file in this distribution
+and is also available at: http://www.apache.org/licenses/LICENSE-2.0
+
+---
+
+Third-party components used at runtime (declared dependencies, not vendored):
+
+  - Chromium, packaged by linuxserver.io as the base of the sandbox image
+    (docker/Dockerfile). Subject to its own license terms.
+  - URLhaus malware feed by abuse.ch (host/urlhaus_sync.py). The feed itself
+    is released under CC0; only the feed is consumed, no code is copied in.
+
+This NOTICE file is provided for informational purposes only and does not
+modify the License.
