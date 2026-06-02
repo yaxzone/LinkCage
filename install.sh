@@ -28,8 +28,8 @@ HOST_NAME="com.linkcage.host"
 # then get native messaging without passing an ID; dev/unpacked installs still
 # pass their own ID as the first argument.
 PUBLISHED_EXTENSION_IDS=(
-    # "<chrome-web-store-id>"   # add after Chrome approval
-    # "<edge-add-ons-id>"       # add after Edge approval
+    "namalaooippodkhbjpjnagbgpggcphld"  # Edge Add-ons (LinkCage)
+    # "<chrome-web-store-id>"           # add after Chrome approval
 )
 
 if [ -z "$1" ] && [ ${#PUBLISHED_EXTENSION_IDS[@]} -eq 0 ]; then

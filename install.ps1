@@ -33,8 +33,8 @@ param(
 # then get native messaging without passing -ExtensionId; dev/unpacked installs
 # still pass their own ID via -ExtensionId.
 $PublishedExtensionIds = @(
-    # "<chrome-web-store-id>"   # add after Chrome approval
-    # "<edge-add-ons-id>"       # add after Edge approval
+    "namalaooippodkhbjpjnagbgpggcphld"  # Edge Add-ons (LinkCage)
+    # "<chrome-web-store-id>"           # add after Chrome approval
 )
 
 $ErrorActionPreference = "Stop"
