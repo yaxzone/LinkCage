@@ -34,7 +34,7 @@ param(
 # still pass their own ID via -ExtensionId.
 $PublishedExtensionIds = @(
     "namalaooippodkhbjpjnagbgpggcphld"  # Edge Add-ons (LinkCage)
-    # "<chrome-web-store-id>"           # add after Chrome approval
+    "mbhpflfbgadakelfhjchakjimeanpjpd"  # Chrome Web Store (LinkCage)
 )
 
 $ErrorActionPreference = "Stop"

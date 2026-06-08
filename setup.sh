@@ -30,6 +30,13 @@ HOST_NAME="com.linkcage.host"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 GECKO_ID="${GECKO_ID:-linkcage@yaxzone}"
 
+# Published store extension IDs — fixed constants, baked into the native-host
+# allow-list so there is no "paste your ID" step. Store-installed users (Chrome
+# Web Store / Edge Add-ons) are covered automatically. Set EXTENSION_ID=<id>
+# in the environment only to additionally allow an unpacked/dev build.
+CHROME_STORE_ID="mbhpflfbgadakelfhjchakjimeanpjpd"   # Chrome Web Store
+EDGE_STORE_ID="namalaooippodkhbjpjnagbgpggcphld"     # Edge Add-ons
+
 # ── Colors ───────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -353,53 +360,43 @@ cmd_setup() {
     "$PY" - "$CONFIG_PATH" "$DOCKER_DIR" <<'PYEOF'
 import json, sys
 config_path, docker_dir = sys.argv[1], sys.argv[2]
-with open(config_path, 'r') as f:
-    config = json.load(f)
+# config.json is gitignored (it holds machine-local paths) so a fresh download
+# won't have one. Load it if present, otherwise start from defaults.
+try:
+    with open(config_path) as f:
+        config = json.load(f)
+    existed = True
+except (FileNotFoundError, ValueError):
+    config = {}
+    existed = False
 if not config.get('composePath'):
+    config.setdefault('containerName', 'chromium-browser')
     config['composePath'] = docker_dir
+    config.setdefault('composeFile', 'docker-compose.yml')
+    config.setdefault('localPort', 3443)
+    config.setdefault('protocol', 'https')
+    config.setdefault('chromiumProfileDir', '.chromium-profile')
+    config.setdefault('autoStartContainer', True)
+    config.setdefault('autoOpenBrowser', True)
+    config.setdefault('browserArgs', ['--incognito'])
+    config.setdefault('debug_log', False)
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
-    print(f"  composePath set to: {docker_dir}")
+    print("  created config.json (composePath: %s)" % docker_dir if not existed
+          else "  composePath set to: %s" % docker_dir)
 PYEOF
     echo -e "${GREEN}  Config: OK${NC}"
 
-    # ── Step 4: Load Chrome extension ────────────────────────────
+    # ── Step 4: Extension ────────────────────────────────────────
     echo ""
-    echo -e "${YELLOW}[4/6] Chrome extension setup...${NC}"
+    echo -e "${YELLOW}[4/6] Extension...${NC}"
     echo ""
-
-    EXTENSION_DIR="$SCRIPT_DIR/extension"
-
-    if [ -n "$CHROME_CMD" ]; then
-        echo -e "${CYAN}  Opening Chrome to the extensions page...${NC}"
-        if [ "$OS" = "Darwin" ]; then
-            open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
-        else
-            $CHROME_CMD "chrome://extensions" &>/dev/null &
-        fi
-    fi
-
-    echo ""
-    echo -e "${WHITE}  ┌────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${WHITE}  │  In Chrome:                                                │${NC}"
-    echo -e "${WHITE}  │                                                            │${NC}"
-    echo -e "${WHITE}  │  1. Enable 'Developer mode' (toggle, top right)           │${NC}"
-    echo -e "${WHITE}  │  2. Click 'Load unpacked'                                  │${NC}"
-    echo -e "${WHITE}  │  3. Select this folder:                                    │${NC}"
-    echo -e "${YELLOW}  │     $EXTENSION_DIR${NC}"
-    echo -e "${WHITE}  │  4. Copy the Extension ID shown on the card                │${NC}"
-    echo -e "${WHITE}  │                                                            │${NC}"
-    echo -e "${WHITE}  └────────────────────────────────────────────────────────────┘${NC}"
-    echo ""
-
-    read -rp "  Paste your Extension ID here: " EXTENSION_ID
-    EXTENSION_ID="$(echo "$EXTENSION_ID" | tr -d '[:space:]')"
-
-    if [ -z "$EXTENSION_ID" ] || [ ${#EXTENSION_ID} -lt 10 ]; then
-        echo -e "${RED}  ERROR: Invalid Extension ID.${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}  Extension ID: $EXTENSION_ID${NC}"
+    echo -e "${WHITE}  Install the LinkCage extension from your browser's store if you haven't:${NC}"
+    echo -e "${CYAN}    Chrome Web Store / Edge Add-ons / Firefox Add-ons (AMO)${NC}"
+    echo -e "${GRAY}  No extension ID needed - the published IDs are already baked in.${NC}"
+    # EXTENSION_ID is optional: set it in the environment only to additionally
+    # allow an unpacked/dev build. Empty by default.
+    EXTENSION_ID="$(echo "${EXTENSION_ID:-}" | tr -d '[:space:]')"
 
     # ── Step 5: Register native messaging host ───────────────────
     echo ""
@@ -408,6 +405,20 @@ PYEOF
     LAUNCHER="$SCRIPT_DIR/host/launcher.sh"
     chmod +x "$LAUNCHER" "$SCRIPT_DIR/host/launcher.py"
 
+    # Build the chromium allow-list: published Chrome + Edge store IDs (constants),
+    # plus any unpacked/dev id passed via EXTENSION_ID. Chrome and Edge share this
+    # manifest; each browser only accepts its own id from the list.
+    ALLOWED_IDS=("$CHROME_STORE_ID" "$EDGE_STORE_ID")
+    [ -n "$EXTENSION_ID" ] && ALLOWED_IDS+=("$EXTENSION_ID")
+    ORIGINS_JSON=""
+    for id in "${ALLOWED_IDS[@]}"; do
+        if [ -z "$ORIGINS_JSON" ]; then
+            ORIGINS_JSON=$'\n    "chrome-extension://'"$id"$'/"'
+        else
+            ORIGINS_JSON+=$',\n    "chrome-extension://'"$id"$'/"'
+        fi
+    done
+
     build_manifest() {
         cat <<MANIFEST
 {
@@ -415,8 +426,7 @@ PYEOF
   "description": "LinkCage - Opens links in a sandboxed Docker Chromium container",
   "path": "$LAUNCHER",
   "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://$EXTENSION_ID/"
+  "allowed_origins": [$ORIGINS_JSON
   ]
 }
 MANIFEST
@@ -483,7 +493,7 @@ MANIFEST
     echo -e "${GREEN}  ║       LinkCage setup complete!           ║${NC}"
     echo -e "${GREEN}  ╚══════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${WHITE}  1. Restart Chrome${NC}"
+    echo -e "${WHITE}  1. Restart your browser (Chrome / Edge / Firefox)${NC}"
     echo -e "${WHITE}  2. Right-click any link -> 'LinkCage: Open in Sandbox'${NC}"
     echo ""
     echo -e "${GRAY}  Management commands:${NC}"

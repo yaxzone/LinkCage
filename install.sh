@@ -29,7 +29,7 @@ HOST_NAME="com.linkcage.host"
 # pass their own ID as the first argument.
 PUBLISHED_EXTENSION_IDS=(
     "namalaooippodkhbjpjnagbgpggcphld"  # Edge Add-ons (LinkCage)
-    # "<chrome-web-store-id>"           # add after Chrome approval
+    "mbhpflfbgadakelfhjchakjimeanpjpd"  # Chrome Web Store (LinkCage)
 )
 
 if [ -z "$1" ] && [ ${#PUBLISHED_EXTENSION_IDS[@]} -eq 0 ]; then

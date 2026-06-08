@@ -72,7 +72,15 @@ Your real browser, your files, your credentials — **never exposed**.
 - Python 3.6+ on PATH
 - A supported browser: Google Chrome, Chromium, Microsoft Edge, or Firefox
 
-### One-Command Setup
+### Quick Start
+
+**Step 1 — Install the extension** from your browser's store (this is the only manual step):
+
+- **Chrome:** Chrome Web Store
+- **Edge:** Microsoft Edge Add-ons
+- **Firefox:** Firefox Add-ons (AMO)
+
+**Step 2 — Run setup.** It detects every browser you have installed and registers native messaging for all of them. No extension ID to copy or paste — the published store IDs are baked in.
 
 **Windows (PowerShell):**
 ```powershell
@@ -86,19 +94,23 @@ chmod +x setup.sh
 ```
 
 The setup script will:
-1. Verify prerequisites (Docker, Python, a browser)
+1. Verify prerequisites (Docker, Python)
 2. Pull the hardened Docker image
-3. Configure the environment
-4. Open Chrome and guide you through loading the extension (you can load it in Edge or Firefox the same way)
-5. Register the native messaging host for Chrome, Edge, and Firefox
+3. Create `config.json` (if missing), pointing at this install's `docker/` directory
+4. Detect which browsers are installed (Chrome, Edge, Firefox)
+5. Register the native messaging host for each detected browser — the published Chrome/Edge IDs and the Firefox gecko id are built in
 6. Start the sandbox container
 
 After setup, restart your browser and right-click any link to select **"LinkCage: Open in Sandbox"**.
 
-### Manual Setup
+> Order doesn't matter: because the store IDs are fixed, you can run setup before or after installing the extension. If you run it while the browser is open, restart the browser once so it re-reads the registration.
+
+### Manual Setup (developer / unpacked builds)
 
 <details>
 <summary>Click to expand step-by-step instructions</summary>
+
+> You only need this if you're loading an **unpacked/dev build** of the extension. If you installed from a store, use the Quick Start above — `setup.ps1`/`setup.sh` does everything.
 
 #### 1. Pull the hardened image
 
@@ -154,7 +166,7 @@ chmod +x install.sh
 ./install.sh <YOUR_EXTENSION_ID> [firefox-gecko-id]
 ```
 
-This registers the native host for **Chrome, Edge, and Firefox**. `<YOUR_EXTENSION_ID>` is your Chrome/Edge extension ID; the Firefox gecko id defaults to `linkcage@yaxzone`.
+This registers the native host for **Chrome, Edge, and Firefox**. `<YOUR_EXTENSION_ID>` is your unpacked build's Chrome/Edge extension ID; the Firefox gecko id defaults to `linkcage@yaxzone`. The published store IDs are already included automatically, so for a store install you can omit `-ExtensionId` entirely.
 
 #### 5. Restart your browser
 

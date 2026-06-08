@@ -36,6 +36,7 @@ param(
     [switch]$stop,
     [switch]$status,
     [switch]$uninstall,
+    [string[]]$ExtensionId = @(),
     [string]$GeckoId = "linkcage@yaxzone"
 )
 
@@ -43,6 +44,13 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $hostName = "com.linkcage.host"
 $configPath = Join-Path $scriptDir "config.json"
+
+# Published store extension IDs — fixed constants, baked into the native-host
+# allow-list so there is no "paste your ID" step. Store-installed users (Chrome
+# Web Store / Edge Add-ons) are covered automatically. Pass -ExtensionId <id>
+# only to additionally allow an unpacked/dev build.
+$ChromeStoreId = "mbhpflfbgadakelfhjchakjimeanpjpd"   # Chrome Web Store
+$EdgeStoreId   = "namalaooippodkhbjpjnagbgpggcphld"   # Edge Add-ons
 
 # ── Load config ──────────────────────────────────────────────────
 function Get-LinkCageConfig {
@@ -368,51 +376,78 @@ Write-Host ""
 Write-Host "[3/6] Configuring environment..." -ForegroundColor Yellow
 
 $dockerDir = Join-Path $scriptDir "docker"
-$config = Get-Content $configPath -Raw | ConvertFrom-Json
 
-if (-not $config.composePath -or $config.composePath -eq "") {
-    $config.composePath = $dockerDir
+if (Test-Path $configPath) {
+    $config = Get-Content $configPath -Raw | ConvertFrom-Json
+    if (-not $config.composePath -or $config.composePath -eq "") {
+        $config | Add-Member -NotePropertyName composePath -NotePropertyValue $dockerDir -Force
+        $config | ConvertTo-Json -Depth 5 | Out-File -FilePath $configPath -Encoding utf8
+        Write-Host "  composePath set to: $dockerDir" -ForegroundColor Gray
+    }
+} else {
+    # config.json is gitignored (it holds machine-local paths) so a fresh
+    # download won't have one. Create it from defaults with composePath pointing
+    # at this install's docker/ directory.
+    $config = [PSCustomObject]@{
+        containerName      = "chromium-browser"
+        composePath        = $dockerDir
+        composeFile        = "docker-compose.yml"
+        localPort          = 3443
+        protocol           = "https"
+        chromiumProfileDir = ".chromium-profile"
+        autoStartContainer = $true
+        autoOpenBrowser    = $true
+        browserArgs        = @("--incognito")
+        debug_log          = $false
+    }
     $config | ConvertTo-Json -Depth 5 | Out-File -FilePath $configPath -Encoding utf8
-    Write-Host "  composePath set to: $dockerDir" -ForegroundColor Gray
+    Write-Host "  Created config.json (composePath: $dockerDir)" -ForegroundColor Gray
 }
 Write-Host "  Config: OK" -ForegroundColor Green
 
-# ── Step 4: Load Chrome extension ────────────────────────────────
+# ── Step 4: Detect installed browsers ───────────────────────────
 Write-Host ""
-Write-Host "[4/6] Chrome extension setup..." -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  Opening Chrome to the extensions page..." -ForegroundColor Cyan
+Write-Host "[4/6] Detecting browsers..." -ForegroundColor Yellow
 
-$extensionDir = Join-Path $scriptDir "extension"
+function Test-BrowserInstalled {
+    param([string[]]$Paths, [string]$AppPathExe)
+    foreach ($p in $Paths) { if ($p -and (Test-Path $p)) { return $true } }
+    if ($AppPathExe) {
+        foreach ($root in @(
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$AppPathExe",
+            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$AppPathExe")) {
+            if (Test-Path $root) { return $true }
+        }
+    }
+    return $false
+}
 
-if ($chromePath -and (Test-Path $chromePath -ErrorAction SilentlyContinue)) {
-    Start-Process $chromePath -ArgumentList "chrome://extensions"
-} else {
-    Start-Process "chrome.exe" -ArgumentList "chrome://extensions" -ErrorAction SilentlyContinue
+$chromeInstalled = Test-BrowserInstalled -AppPathExe "chrome.exe" -Paths @(
+    "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+    "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe")
+$edgeInstalled = Test-BrowserInstalled -AppPathExe "msedge.exe" -Paths @(
+    "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+    "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe")
+$firefoxInstalled = Test-BrowserInstalled -AppPathExe "firefox.exe" -Paths @(
+    "$env:ProgramFiles\Mozilla Firefox\firefox.exe",
+    "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe")
+
+Write-Host ("  Chrome:  {0}" -f $(if ($chromeInstalled) {"detected"} else {"not found"}))  -ForegroundColor $(if ($chromeInstalled) {"Green"} else {"Gray"})
+Write-Host ("  Edge:    {0}" -f $(if ($edgeInstalled) {"detected"} else {"not found"}))    -ForegroundColor $(if ($edgeInstalled) {"Green"} else {"Gray"})
+Write-Host ("  Firefox: {0}" -f $(if ($firefoxInstalled) {"detected"} else {"not found"})) -ForegroundColor $(if ($firefoxInstalled) {"Green"} else {"Gray"})
+
+# If nothing is detected, register for all three anyway so LinkCage works as
+# soon as the user installs a browser + the extension.
+if (-not ($chromeInstalled -or $edgeInstalled -or $firefoxInstalled)) {
+    Write-Host "  No supported browser detected; registering for all three." -ForegroundColor Yellow
+    $chromeInstalled = $edgeInstalled = $firefoxInstalled = $true
 }
 
 Write-Host ""
-Write-Host "  ┌────────────────────────────────────────────────────────────┐" -ForegroundColor White
-Write-Host "  │  In Chrome:                                                │" -ForegroundColor White
-Write-Host "  │                                                            │" -ForegroundColor White
-Write-Host "  │  1. Enable 'Developer mode' (toggle, top right)           │" -ForegroundColor White
-Write-Host "  │  2. Click 'Load unpacked'                                  │" -ForegroundColor White
-Write-Host "  │  3. Select this folder:                                    │" -ForegroundColor White
-Write-Host "  │     $extensionDir" -ForegroundColor Yellow -NoNewline
-Write-Host "  │" -ForegroundColor White
-Write-Host "  │  4. Copy the Extension ID shown on the card                │" -ForegroundColor White
-Write-Host "  │                                                            │" -ForegroundColor White
-Write-Host "  └────────────────────────────────────────────────────────────┘" -ForegroundColor White
-Write-Host ""
-
-$extensionId = Read-Host "  Paste your Extension ID here"
-$extensionId = $extensionId.Trim()
-
-if (-not $extensionId -or $extensionId.Length -lt 10) {
-    Write-Host "  ERROR: Invalid Extension ID." -ForegroundColor Red
-    exit 1
-}
-Write-Host "  Extension ID: $extensionId" -ForegroundColor Green
+Write-Host "  Install the LinkCage extension from your browser's store if you haven't:" -ForegroundColor White
+Write-Host "    Chrome Web Store / Edge Add-ons / Firefox Add-ons (AMO)" -ForegroundColor Cyan
+Write-Host "  No extension ID needed - the published IDs are already baked in." -ForegroundColor Gray
 
 # ── Step 5: Register native messaging host ──────────────────────
 Write-Host ""
@@ -422,12 +457,19 @@ $hostDir = Join-Path $scriptDir "host"
 $launcherBat = Join-Path $hostDir "launcher.bat"
 $launcherBatFull = (Resolve-Path $launcherBat).Path -replace '/', '\'
 
+# Chromium-format allow-list: published Chrome + Edge store IDs (constants),
+# plus any extra unpacked/dev IDs passed via -ExtensionId. Chrome and Edge
+# share this manifest; each browser only accepts its own ID from the list.
+$chromeOrigins = @(@($ChromeStoreId, $EdgeStoreId) + $ExtensionId |
+    Where-Object { $_ } | Select-Object -Unique |
+    ForEach-Object { "chrome-extension://$_/" })
+
 $manifest = @{
     name = $hostName
     description = "LinkCage - Opens links in a sandboxed Docker Chromium container"
     path = $launcherBatFull
     type = "stdio"
-    allowed_origins = @("chrome-extension://$extensionId/")
+    allowed_origins = $chromeOrigins
 }
 
 $manifestDir = Join-Path $env:LOCALAPPDATA "LinkCage"
@@ -437,20 +479,7 @@ if (-not (Test-Path $manifestDir)) {
 $manifestPath = Join-Path $manifestDir "$hostName.json"
 $manifest | ConvertTo-Json -Depth 5 | Out-File -FilePath $manifestPath -Encoding utf8
 
-$regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName"
-if (-not (Test-Path $regPath)) {
-    New-Item -Path $regPath -Force | Out-Null
-}
-Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestPath
-
-# Edge uses the same Chromium-format manifest, registered under its own key.
-$edgeRegPath = "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$hostName"
-if (-not (Test-Path $edgeRegPath)) {
-    New-Item -Path $edgeRegPath -Force | Out-Null
-}
-Set-ItemProperty -Path $edgeRegPath -Name "(Default)" -Value $manifestPath
-
-# Firefox: same launcher, allowed_extensions instead of allowed_origins
+# Firefox: same launcher, allowed_extensions (gecko id) instead of allowed_origins
 $ffManifest = @{
     name = $hostName
     description = "LinkCage - Opens links in a sandboxed Docker Chromium container"
@@ -461,18 +490,29 @@ $ffManifest = @{
 $ffManifestPath = Join-Path $manifestDir "$hostName.firefox.json"
 $ffManifest | ConvertTo-Json -Depth 5 | Out-File -FilePath $ffManifestPath -Encoding utf8
 
-$ffRegPath = "HKCU:\Software\Mozilla\NativeMessagingHosts\$hostName"
-if (-not (Test-Path $ffRegPath)) {
-    New-Item -Path $ffRegPath -Force | Out-Null
+# Register only for the browsers that are actually present.
+if ($chromeInstalled) {
+    $regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName"
+    if (-not (Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
+    Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestPath
+    Write-Host "  Chrome:  registered" -ForegroundColor Green
 }
-Set-ItemProperty -Path $ffRegPath -Name "(Default)" -Value $ffManifestPath
+if ($edgeInstalled) {
+    $edgeRegPath = "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$hostName"
+    if (-not (Test-Path $edgeRegPath)) { New-Item -Path $edgeRegPath -Force | Out-Null }
+    Set-ItemProperty -Path $edgeRegPath -Name "(Default)" -Value $manifestPath
+    Write-Host "  Edge:    registered" -ForegroundColor Green
+}
+if ($firefoxInstalled) {
+    $ffRegPath = "HKCU:\Software\Mozilla\NativeMessagingHosts\$hostName"
+    if (-not (Test-Path $ffRegPath)) { New-Item -Path $ffRegPath -Force | Out-Null }
+    Set-ItemProperty -Path $ffRegPath -Name "(Default)" -Value $ffManifestPath
+    Write-Host "  Firefox: registered" -ForegroundColor Green
+}
 
 Write-Host "  Manifest: $manifestPath" -ForegroundColor Gray
-Write-Host "  Registry: $regPath" -ForegroundColor Gray
-Write-Host "  Edge registry: $edgeRegPath" -ForegroundColor Gray
-Write-Host "  Firefox manifest: $ffManifestPath" -ForegroundColor Gray
-Write-Host "  Firefox registry: $ffRegPath" -ForegroundColor Gray
-Write-Host "  Gecko ID: $GeckoId" -ForegroundColor Gray
+Write-Host "  Allowed IDs: $($chromeOrigins -join ', ')" -ForegroundColor Gray
+Write-Host "  Firefox gecko ID: $GeckoId" -ForegroundColor Gray
 Write-Host "  Host registered: OK" -ForegroundColor Green
 
 # ── Step 6: Start the container ──────────────────────────────────
@@ -505,7 +545,7 @@ Write-Host "  ╔═════════════════════
 Write-Host "  ║       LinkCage setup complete!           ║" -ForegroundColor Green
 Write-Host "  ╚══════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "  1. Restart Chrome" -ForegroundColor White
+Write-Host "  1. Restart your browser (Chrome / Edge / Firefox)" -ForegroundColor White
 Write-Host "  2. Right-click any link -> 'LinkCage: Open in Sandbox'" -ForegroundColor White
 Write-Host ""
 Write-Host "  Management commands:" -ForegroundColor Gray
