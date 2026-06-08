@@ -32,8 +32,8 @@ python scripts/build-extension.py --browser firefox
 node --check extension/background.js
 
 # Installer syntax
-bash -n install.sh setup.sh uninstall.sh
-pwsh -NoProfile -Command "foreach($f in 'install.ps1','setup.ps1','uninstall.ps1'){ \$e=\$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path \$f), [ref]\$null, [ref]\$e); if(\$e){\$e}else{\"\$f OK\"} }"
+bash -n setup.sh
+pwsh -NoProfile -Command "foreach($f in 'setup.ps1'){ \$e=\$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path \$f), [ref]\$null, [ref]\$e); if(\$e){\$e}else{\"\$f OK\"} }"
 
 # Manifests are valid JSON
 python -c "import json;[json.load(open('extension/'+f)) for f in ['manifest.json','manifest.firefox.json']];print('manifests OK')"

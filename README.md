@@ -155,18 +155,19 @@ Copy `docker/docker-compose.yml` to that directory, or point `composePath` at an
 
 #### 4. Register the native messaging host
 
+The same `setup` script registers the host. For an unpacked/dev build, pass your extension's ID so it's added to the allow-list alongside the built-in published store IDs:
+
 **Windows:**
 ```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 -ExtensionId <YOUR_EXTENSION_ID> [-GeckoId linkcage@yaxzone]
+powershell -ExecutionPolicy Bypass -File setup.ps1 -ExtensionId <YOUR_EXTENSION_ID> [-GeckoId linkcage@yaxzone]
 ```
 
 **macOS / Linux:**
 ```bash
-chmod +x install.sh
-./install.sh <YOUR_EXTENSION_ID> [firefox-gecko-id]
+EXTENSION_ID=<YOUR_EXTENSION_ID> ./setup.sh
 ```
 
-This registers the native host for **Chrome, Edge, and Firefox**. `<YOUR_EXTENSION_ID>` is your unpacked build's Chrome/Edge extension ID; the Firefox gecko id defaults to `linkcage@yaxzone`. The published store IDs are already included automatically, so for a store install you can omit `-ExtensionId` entirely.
+This registers the native host for **Chrome, Edge, and Firefox**. `<YOUR_EXTENSION_ID>` is your unpacked build's Chrome/Edge extension ID; the Firefox gecko id defaults to `linkcage@yaxzone`. The published store IDs are already included automatically, so for a store install you don't need to pass an ID at all.
 
 #### 5. Restart your browser
 
@@ -185,12 +186,8 @@ LinkCage/
 ├── README.md              # You are here
 ├── LICENSE                # Apache License 2.0
 ├── config.json            # User-configurable settings
-├── setup.ps1              # One-command setup (Windows)
-├── setup.sh               # One-command setup (macOS/Linux)
-├── install.ps1            # Manual installer (Windows)
-├── install.sh             # Manual installer (macOS/Linux)
-├── uninstall.ps1          # Uninstaller (Windows)
-├── uninstall.sh           # Uninstaller (macOS/Linux)
+├── setup.ps1              # Setup & management (Windows): setup, -start/-stop/-status/-uninstall
+├── setup.sh               # Setup & management (macOS/Linux): setup, start/stop/status/uninstall
 ├── requirements.txt       # Python host deps (stdlib only today)
 ├── extension/             # Browser extension, Manifest V3 (Chrome / Edge / Firefox)
 │   ├── manifest.json          # Chrome / Edge (service worker)
@@ -337,8 +334,8 @@ The build targets **zero *fixable* High/Critical CVEs**. A small number of High/
 
 ## Uninstall
 
-**Windows:** `powershell -ExecutionPolicy Bypass -File uninstall.ps1`
-**macOS/Linux:** `./uninstall.sh`
+**Windows:** `powershell -ExecutionPolicy Bypass -File setup.ps1 -uninstall`
+**macOS/Linux:** `./setup.sh uninstall`
 
 This removes the Chrome, Edge, and Firefox host registrations. Then remove the extension itself from `chrome://extensions`, `edge://extensions`, or `about:addons` (Firefox).
 
