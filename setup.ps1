@@ -88,7 +88,7 @@ if ($stop) {
         Where-Object { $_.CommandLine -match [regex]::Escape($userDataDir) }
     if ($chromeProcs) {
         $chromeProcs | ForEach-Object {
-            & taskkill /F /T /PID $_.ProcessId 2>$null | Out-Null
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
         }
         Write-Host "  Browser window closed." -ForegroundColor Green
     } else {
@@ -201,7 +201,7 @@ if ($uninstall) {
         Where-Object { $_.CommandLine -match [regex]::Escape($userDataDir) }
     if ($chromeProcs) {
         $chromeProcs | ForEach-Object {
-            & taskkill /F /T /PID $_.ProcessId 2>$null | Out-Null
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
         }
         Write-Host "  Browser window closed." -ForegroundColor Green
     }
