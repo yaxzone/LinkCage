@@ -1,4 +1,4 @@
-# Copyright 2026 Luis Yax
+﻿# Copyright 2026 Luis Yax
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
