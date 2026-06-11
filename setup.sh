@@ -393,21 +393,23 @@ try:
 except (FileNotFoundError, ValueError):
     config = {}
     existed = False
-if not config.get('composePath'):
-    config.setdefault('containerName', 'chromium-browser')
-    config['composePath'] = docker_dir
-    config.setdefault('composeFile', 'docker-compose.yml')
-    config.setdefault('localPort', 3443)
-    config.setdefault('protocol', 'https')
-    config.setdefault('chromiumProfileDir', '.chromium-profile')
-    config.setdefault('autoStartContainer', True)
-    config.setdefault('autoOpenBrowser', True)
-    config.setdefault('browserArgs', ['--incognito'])
-    config.setdefault('debug_log', False)
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)
-    print("  created config.json (composePath: %s)" % docker_dir if not existed
-          else "  composePath set to: %s" % docker_dir)
+# Always re-point composePath at THIS install's docker dir so a moved or
+# renamed install never keeps a stale absolute path (which would make the
+# native host fail with "docker compose file not found").
+config['composePath'] = docker_dir
+config.setdefault('containerName', 'chromium-browser')
+config.setdefault('composeFile', 'docker-compose.yml')
+config.setdefault('localPort', 3443)
+config.setdefault('protocol', 'https')
+config.setdefault('chromiumProfileDir', '.chromium-profile')
+config.setdefault('autoStartContainer', True)
+config.setdefault('autoOpenBrowser', True)
+config.setdefault('browserArgs', ['--incognito'])
+config.setdefault('debug_log', False)
+with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+print("  created config.json (composePath: %s)" % docker_dir if not existed
+      else "  composePath set to: %s" % docker_dir)
 PYEOF
     echo -e "${GREEN}  Config: OK${NC}"
 

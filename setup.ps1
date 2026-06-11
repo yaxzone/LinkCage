@@ -390,11 +390,12 @@ $dockerDir = Join-Path $scriptDir "docker"
 
 if (Test-Path $configPath) {
     $config = Get-Content $configPath -Raw | ConvertFrom-Json
-    if (-not $config.composePath -or $config.composePath -eq "") {
-        $config | Add-Member -NotePropertyName composePath -NotePropertyValue $dockerDir -Force
-        [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
-        Write-Host "  composePath set to: $dockerDir" -ForegroundColor Gray
-    }
+    # Always re-point composePath at THIS install's docker dir so a moved or
+    # renamed install never keeps a stale absolute path (which would make the
+    # native host fail with "docker compose file not found").
+    $config | Add-Member -NotePropertyName composePath -NotePropertyValue $dockerDir -Force
+    [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  composePath set to: $dockerDir" -ForegroundColor Gray
 } else {
     # config.json is gitignored (it holds machine-local paths) so a fresh
     # download won't have one. Create it from defaults with composePath pointing
