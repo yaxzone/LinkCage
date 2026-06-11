@@ -275,6 +275,28 @@ cmd_uninstall() {
 # ══════════════════════════════════════════════════════════════════
 # ── SETUP (default) ──────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════
+check_install_location() {
+    # macOS only: Chrome (and other browsers) cannot execute the native
+    # messaging host from ~/Downloads, ~/Desktop, or ~/Documents — macOS TCC
+    # blocks it, so clicking a link silently fails with "Native host has
+    # exited". Refuse to register from a protected folder.
+    [ "$OS" = "Darwin" ] || return 0
+    case "$SCRIPT_DIR/" in
+        "$HOME"/Downloads/*|"$HOME"/Desktop/*|"$HOME"/Documents/*)
+            echo ""
+            echo -e "${RED}  ERROR: LinkCage is in a macOS-protected folder:${NC}"
+            echo -e "${RED}    $SCRIPT_DIR${NC}"
+            echo -e "${YELLOW}  macOS blocks Chrome from launching the native host out of${NC}"
+            echo -e "${YELLOW}  ~/Downloads, ~/Desktop, and ~/Documents, so links won't open.${NC}"
+            echo -e "${WHITE}  Move LinkCage somewhere else and re-run, e.g.:${NC}"
+            echo -e "${CYAN}    mv \"$SCRIPT_DIR\" \"\$HOME/LinkCage\"${NC}"
+            echo -e "${CYAN}    cd \"\$HOME/LinkCage\" && ./setup.sh${NC}"
+            echo ""
+            exit 1
+            ;;
+    esac
+}
+
 cmd_setup() {
     # ── Banner ───────────────────────────────────────────────────
     echo ""
@@ -285,6 +307,8 @@ cmd_setup() {
     echo ""
 
     # ── Step 1: Check prerequisites ──────────────────────────────
+    check_install_location
+
     echo -e "${YELLOW}[1/6] Checking prerequisites...${NC}"
 
     if ! command -v docker &> /dev/null; then
