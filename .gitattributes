@@ -1,0 +1,27 @@
+# Normalize line endings so cross-platform clones are deterministic.
+# Without this, a contributor's core.autocrlf could commit CRLF into shell
+# scripts and break them on macOS/Linux (bad interpreter: /bin/bash^M).
+
+# Default: detect text, store with LF in the repo, check out native.
+* text=auto eol=lf
+
+# Scripts that MUST stay LF regardless of platform (run by bash/python).
+*.sh    text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# Windows-only scripts MUST stay CRLF.
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binary assets — never touch.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.zip   binary
