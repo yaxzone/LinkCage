@@ -392,7 +392,7 @@ if (Test-Path $configPath) {
     $config = Get-Content $configPath -Raw | ConvertFrom-Json
     if (-not $config.composePath -or $config.composePath -eq "") {
         $config | Add-Member -NotePropertyName composePath -NotePropertyValue $dockerDir -Force
-        $config | ConvertTo-Json -Depth 5 | Out-File -FilePath $configPath -Encoding utf8
+        [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
         Write-Host "  composePath set to: $dockerDir" -ForegroundColor Gray
     }
 } else {
@@ -411,7 +411,7 @@ if (Test-Path $configPath) {
         browserArgs        = @("--incognito")
         debug_log          = $false
     }
-    $config | ConvertTo-Json -Depth 5 | Out-File -FilePath $configPath -Encoding utf8
+    [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
     Write-Host "  Created config.json (composePath: $dockerDir)" -ForegroundColor Gray
 }
 Write-Host "  Config: OK" -ForegroundColor Green

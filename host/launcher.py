@@ -310,7 +310,10 @@ def load_config():
         },
     }
     try:
-        with open(CONFIG_PATH, "r") as f:
+        # utf-8-sig tolerates a UTF-8 BOM (Windows PowerShell's Out-File -Encoding
+        # utf8 writes one); without it json.load raises and the config is silently
+        # dropped, leaving composePath empty.
+        with open(CONFIG_PATH, "r", encoding="utf-8-sig") as f:
             defaults.update(json.load(f))
     except (FileNotFoundError, json.JSONDecodeError):
         pass
@@ -321,7 +324,7 @@ def load_config():
     # file. These must come from the project install only.
     PROTECTED_KEYS = {"composePath", "composeFile", "containerName"}
     try:
-        with open(USER_CONFIG_PATH, "r") as f:
+        with open(USER_CONFIG_PATH, "r", encoding="utf-8-sig") as f:
             user_cfg = json.load(f)
         for k, v in user_cfg.items():
             if k in PROTECTED_KEYS:
