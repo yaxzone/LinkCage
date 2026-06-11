@@ -32,11 +32,25 @@ from __future__ import annotations
 
 import argparse
 import os
+import ssl
 import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """TLS context with a working CA bundle.
+
+    macOS's python.org Python ships no system CA bundle, so plain urlopen()
+    fails with CERTIFICATE_VERIFY_FAILED. Prefer certifi's bundle when present;
+    fall back to the platform default (fine on Windows/Linux)."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
 
 URLHAUS_URL = "https://urlhaus.abuse.ch/downloads/hostfile/"
 DEFAULT_FEED_PATH = os.path.expanduser("~/.linkcage/urlhaus.txt")
@@ -63,7 +77,7 @@ def feed_age_seconds(path: str) -> int:
 
 def download(url: str, timeout: int = DOWNLOAD_TIMEOUT) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as resp:
         status = getattr(resp, "status", 200)
         if status and status >= 400:
             raise urllib.error.HTTPError(url, status, f"HTTP {status}", resp.headers, None)

@@ -36,11 +36,25 @@ import ipaddress
 import json
 import os
 import sqlite3
+import ssl
 import threading
 import time
 import urllib.parse
 import urllib.request
 import urllib.error
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """TLS context with a working CA bundle (certifi when available).
+
+    macOS's python.org Python has no system CA bundle, so plain HTTPS fails
+    with CERTIFICATE_VERIFY_FAILED; certifi fixes it. Platform default is fine
+    on Windows/Linux."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
 from collections import OrderedDict
 from dataclasses import dataclass, field, asdict
 from typing import Optional
@@ -388,7 +402,7 @@ class GSBProvider:
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=self.timeout, context=_ssl_context()) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError, ValueError):
             return None

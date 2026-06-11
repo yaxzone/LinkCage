@@ -1,1 +1,5 @@
-# LinkCage host dependencies (Python stdlib only today — pin new deps here).
+# LinkCage host dependencies (pin new deps here).
+
+# CA bundle for TLS verification. macOS's python.org Python has no system CA
+# store, so the URLhaus feed / Safe Browsing HTTPS fetches fail without this.
+certifi
