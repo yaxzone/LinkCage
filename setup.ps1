@@ -52,6 +52,17 @@ $configPath = Join-Path $scriptDir "config.json"
 $ChromeStoreId = "mbhpflfbgadakelfhjchakjimeanpjpd"   # Chrome Web Store
 $EdgeStoreId   = "namalaooippodkhbjpjnagbgpggcphld"   # Edge Add-ons
 
+# ── Native command guard ────────────────────────────────────────
+# Windows PowerShell turns a native command's stderr into a TERMINATING error
+# when $ErrorActionPreference = 'Stop' — even with 2>$null. (e.g. `docker info`
+# prints a benign cli-plugin warning to stderr.) Run native commands through
+# this so that promotion is off for the call; $LASTEXITCODE still propagates.
+function Invoke-Native {
+    param([Parameter(Mandatory)][scriptblock]$Cmd)
+    $ErrorActionPreference = 'SilentlyContinue'
+    & $Cmd
+}
+
 # ── Load config ──────────────────────────────────────────────────
 function Get-LinkCageConfig {
     $defaults = @{
@@ -100,7 +111,7 @@ if ($stop) {
     if ($running) {
         Write-Host "Stopping sandbox container..." -ForegroundColor Cyan
         $composeFile = Join-Path $config.composePath $config.composeFile
-        docker compose -f $composeFile down
+        Invoke-Native { docker compose -f $composeFile down }
         Write-Host "  Container stopped." -ForegroundColor Green
     } else {
         Write-Host "  Container is not running." -ForegroundColor Gray
@@ -122,7 +133,7 @@ if ($start) {
         Write-Host "Sandbox container is already running." -ForegroundColor Yellow
     } else {
         Write-Host "Starting sandbox container..." -ForegroundColor Green
-        docker compose -f $composeFile up -d
+        Invoke-Native { docker compose -f $composeFile up -d }
     }
 
     # Open browser to container UI
@@ -210,7 +221,7 @@ if ($uninstall) {
     $running = docker ps --filter "name=$($config.containerName)" --format "{{.Names}}" 2>$null
     if ($running) {
         $composeFile = Join-Path $config.composePath $config.composeFile
-        docker compose -f $composeFile down
+        Invoke-Native { docker compose -f $composeFile down }
         Write-Host "  Container stopped." -ForegroundColor Green
     }
 
@@ -300,7 +311,7 @@ if (-not $dockerCheck) {
     Write-Host "  Install Docker Desktop: https://www.docker.com/products/docker-desktop/" -ForegroundColor Red
     exit 1
 }
-$dockerRunning = docker info 2>&1
+Invoke-Native { docker info *> $null }
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR: Docker is not running. Start Docker Desktop first." -ForegroundColor Red
     exit 1
@@ -320,7 +331,7 @@ $venvDir = Join-Path $scriptDir ".venv"
 $venvPy = Join-Path $venvDir "Scripts\python.exe"
 if (-not (Test-Path $venvPy)) {
     Write-Host "  Creating virtualenv at .venv ..." -ForegroundColor Cyan
-    python -m venv "$venvDir"
+    Invoke-Native { python -m venv "$venvDir" *> $null }
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $venvPy)) {
         Write-Host "  ERROR: Failed to create virtualenv." -ForegroundColor Red
         exit 1
@@ -328,8 +339,8 @@ if (-not (Test-Path $venvPy)) {
 }
 $reqFile = Join-Path $scriptDir "requirements.txt"
 if (Test-Path $reqFile) {
-    & $venvPy -m pip install --quiet --upgrade pip
-    & $venvPy -m pip install --quiet -r $reqFile
+    Invoke-Native { & $venvPy -m pip install --quiet --upgrade pip }
+    Invoke-Native { & $venvPy -m pip install --quiet -r $reqFile }
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: pip install failed." -ForegroundColor Red
         exit 1
@@ -357,12 +368,12 @@ if (-not $chromeCheck) {
 # ── Step 2: Pull the hardened Docker image ───────────────────────
 Write-Host ""
 Write-Host "[2/6] Checking Docker image..." -ForegroundColor Yellow
-$imageExists = docker images luisyax/linkcage-sandbox:hardened --format "{{.ID}}" 2>$null
+$imageExists = Invoke-Native { docker images luisyax/linkcage-sandbox:hardened --format "{{.ID}}" }
 if ($imageExists) {
     Write-Host "  Image already present, skipping pull." -ForegroundColor Green
 } else {
     Write-Host "  Pulling hardened Docker image..." -ForegroundColor Yellow
-    docker pull luisyax/linkcage-sandbox:hardened
+    Invoke-Native { docker pull luisyax/linkcage-sandbox:hardened }
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: Failed to pull image. No network or Docker Hub unreachable." -ForegroundColor Red
         Write-Host "  You can build locally instead: docker build -t luisyax/linkcage-sandbox:hardened docker/" -ForegroundColor Yellow
@@ -523,7 +534,7 @@ Write-Host "[6/6] Starting sandbox container..." -ForegroundColor Yellow
 $staleContainer = docker ps -a --filter "name=chromium-browser" --filter "status=exited" --format "{{.ID}}" 2>$null
 if ($staleContainer) {
     Write-Host "  Removing stale container..." -ForegroundColor Gray
-    docker rm chromium-browser 2>$null | Out-Null
+    Invoke-Native { docker rm chromium-browser } | Out-Null
 }
 
 $composeFile = Join-Path $config.composePath $config.composeFile
@@ -531,7 +542,7 @@ $running = docker ps --filter "name=chromium-browser" --format "{{.Names}}" 2>$n
 if ($running) {
     Write-Host "  Container is already running." -ForegroundColor Green
 } else {
-    docker compose -f $composeFile up -d
+    Invoke-Native { docker compose -f $composeFile up -d }
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  WARNING: Container may not have started. Check Docker Desktop." -ForegroundColor Yellow
     } else {
