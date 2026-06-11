@@ -513,10 +513,27 @@ def open_browser_to_container(config, app_url=None):
         _debug("open_browser_to_container: no Chromium browser found; cannot open sandbox viewer")
         return
 
-    args = [CHROME_BIN] + config.get("browserArgs", []) + common_flags
-    args.append(f"--user-data-dir={profile_dir}")
-    args.append(f"--app={app_url}")
-    _popen_detached(args)
+    flags = config.get("browserArgs", []) + common_flags + [
+        f"--user-data-dir={profile_dir}",
+        f"--app={app_url}",
+    ]
+
+    if _SYSTEM == "Darwin":
+        # Launch through LaunchServices (`open`) rather than exec'ing the app's
+        # Mach-O binary directly. A direct exec makes THIS process the
+        # "responsible process" for the browser, so the browser's own bundle
+        # writes (its auto-updater touching /Applications/*.app) are attributed
+        # to us and macOS raises an App Management prompt ("python was prevented
+        # from modifying apps"). `open` lets the browser be responsible for
+        # itself, so no prompt appears. `-n` forces a separate instance bound to
+        # our isolated --user-data-dir.
+        app_bundle = CHROME_BIN
+        marker = ".app/Contents/MacOS/"
+        if marker in CHROME_BIN:
+            app_bundle = CHROME_BIN.split(".app/")[0] + ".app"
+        _popen_detached(["open", "-n", "-a", app_bundle, "--args"] + flags)
+    else:
+        _popen_detached([CHROME_BIN] + flags)
 
 
 def open_url_in_container(config, url):
