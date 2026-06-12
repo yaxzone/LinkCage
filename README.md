@@ -74,6 +74,8 @@ Your real browser, your files, your credentials — **never exposed**.
 
 ### Quick Start
 
+> **Where to put the LinkCage folder** — on **macOS**, install it in a stable, non-protected location such as your home directory (`~/LinkCage`). Do **not** run it from `~/Downloads`, `~/Desktop`, or `~/Documents`: macOS privacy protection (TCC) blocks the browser from launching the native messaging host out of those folders, so links silently fail to open in the sandbox. `setup.sh` refuses to run from a protected folder and tells you to move it. On **Windows** and **Linux**, any location works.
+
 **Step 1 — Install the extension** from your browser's store (this is the only manual step):
 
 - **Chrome:** Chrome Web Store
@@ -328,6 +330,8 @@ The build targets **zero *fixable* High/Critical CVEs**. A small number of High/
 |-------|-----|
 | Context menu doesn't appear | Reload extension in `chrome://extensions`, restart Chrome |
 | "Native host has exited" error | Verify Python 3 is on PATH; test with `python host/launcher.py` |
+| macOS: links never open / "Native host has exited" | The folder is under `~/Downloads`, `~/Desktop`, or `~/Documents` (TCC-blocked). Move it (e.g. `~/LinkCage`) and re-run `./setup.sh` |
+| macOS: "<app> wants to manage other apps" / App Management prompt | Update to the current version — the host now launches the viewer via `open` so this prompt should not appear |
 | Container doesn't start | Check Docker Desktop is running; verify `composePath` in `config.json` |
 | URL doesn't open in container | Check `docker logs chromium-browser` for errors |
 | Dark/blank screen in container | Container may still be starting; wait a few seconds and retry |
